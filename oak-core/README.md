@@ -49,11 +49,15 @@ snapshot of the current state of the content tree:
 
 The returned `ContentTree` instance belongs to the client and its state is
 only modified in response to method calls made by the client. `ContentTree`
-instances are *not* thread-safe, so the client needs to ensure that they are
-not accessed concurrently from multiple threads. Content trees are
-recursive data structures that consist of named properties and subtrees
-that share the same namespace, but are accessed through separate methods
-like outlined below:
+instances are *not* thread-safe for write access, so writing clients need 
+to ensure that they are not accessed concurrently from multiple threads. 
+`ContentTree` instances *are* however thread-safe for read access, so 
+implementations need to ensure that all reading clients see a coherent 
+state.
+
+Content trees are recursive data structures that consist of named properties 
+and subtrees that share the same namespace, but are accessed through separate 
+methods like outlined below:
 
     ContentTree tree = ...;
     for (PropertyState property : tree.getProperties()) {
@@ -71,8 +75,9 @@ content, a client should either call `getCurrentContentTree()` to acquire
 a fresh now content snapshot or use the `refresh()` method to update a
 given `ContentTree` to the latest state of the content repository:
 
+    ContentSession session = ...;
     ContentTree tree = ...;
-    tree.refresh();
+    session.refresh(tree);
 
 In addition to reading repository content, the client can also make
 modifications to the content tree. Such content changes remain local
@@ -80,10 +85,11 @@ to the particular `ContentTree` instance (and related subtrees) until
 explicitly committed. For example, the following code creates and commits
 a new subtree containing nothing but a simple property:
 
+    ContentSession session = ...;
     ContentTree tree = ...;
     ContentTree subtree = tree.addSubtree("hello");
     subtree.setProperty("message", "Hello, World!");
-    tree.commit();
+    session.commit(tree);
 
 Even other `ContentTree` instances acquired from the same `ContentSession`
 won't see such changes until they've been committed and the other trees
