@@ -201,7 +201,7 @@ public abstract class ReadOnlyNodeTypeManager implements NodeTypeManager, Effect
 
     @Override
     public NodeTypeTemplate createNodeTypeTemplate() throws RepositoryException {
-        return new NodeTypeTemplateImpl(this, getNamePathMapper(), getValueFactory());
+        return new NodeTypeTemplateImpl(this, getValueFactory());
     }
 
     @Override
@@ -211,12 +211,12 @@ public abstract class ReadOnlyNodeTypeManager implements NodeTypeManager, Effect
 
     @Override
     public NodeDefinitionTemplate createNodeDefinitionTemplate() {
-        return new NodeDefinitionTemplateImpl(getNamePathMapper());
+        return new NodeDefinitionTemplateImpl();
     }
 
     @Override
     public PropertyDefinitionTemplate createPropertyDefinitionTemplate() {
-        return new PropertyDefinitionTemplateImpl(getNamePathMapper());
+        return new PropertyDefinitionTemplateImpl();
     }
 
     /**

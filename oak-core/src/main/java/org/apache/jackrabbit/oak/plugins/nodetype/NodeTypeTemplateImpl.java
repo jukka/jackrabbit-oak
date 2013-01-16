@@ -44,8 +44,6 @@ final class NodeTypeTemplateImpl
 
     private final NodeTypeManager manager;
 
-    private final NameMapper mapper;
-
     private final ValueFactory factory;
 
     private String primaryItemName;
@@ -56,20 +54,19 @@ final class NodeTypeTemplateImpl
 
     private List<NodeDefinitionTemplate> nodeDefinitionTemplates;
 
-    public NodeTypeTemplateImpl(NodeTypeManager manager, NameMapper mapper, ValueFactory factory) {
+    public NodeTypeTemplateImpl(NodeTypeManager manager, ValueFactory factory) {
         this.manager = manager;
-        this.mapper = mapper;
         this.factory = factory;
     }
 
     public NodeTypeTemplateImpl(NameMapper mapper) {
-        this(null, mapper, ValueFactoryImpl.getInstance());
+        this(null, ValueFactoryImpl.getInstance());
     }
 
     public NodeTypeTemplateImpl(
             NodeTypeManager manager, NameMapper mapper, ValueFactory factory,
             NodeTypeDefinition ntd) throws ConstraintViolationException {
-        this(manager, mapper, factory);
+        this(manager, factory);
 
         setName(ntd.getName());
         setAbstract(ntd.isAbstract());
@@ -124,7 +121,7 @@ final class NodeTypeTemplateImpl
 
     @Override
     public PropertyDefinitionTemplateImpl newPropertyDefinitionBuilder() {
-        return new PropertyDefinitionTemplateImpl(mapper) {
+        return new PropertyDefinitionTemplateImpl() {
             @Override
             protected Value createValue(String value, int type)
                     throws ValueFormatException {
@@ -139,7 +136,7 @@ final class NodeTypeTemplateImpl
 
     @Override
     public NodeDefinitionTemplateImpl newNodeDefinitionBuilder() {
-        return new NodeDefinitionTemplateImpl(mapper) {
+        return new NodeDefinitionTemplateImpl() {
             @Override
             protected NodeType getNodeType(String name)
                     throws RepositoryException  {
@@ -164,7 +161,7 @@ final class NodeTypeTemplateImpl
     @Override
     public void setName(String name) throws ConstraintViolationException {
         JcrNameParser.checkName(name, false);
-        this.name = mapper.getJcrName(mapper.getOakName(name));
+        this.name = name;
     }
 
     @Override
@@ -219,7 +216,7 @@ final class NodeTypeTemplateImpl
         }
         else {
             JcrNameParser.checkName(name, false);
-            this.primaryItemName = mapper.getJcrName(mapper.getOakName(name));
+            this.primaryItemName = name;
         }
     }
 
@@ -237,7 +234,7 @@ final class NodeTypeTemplateImpl
         String[] n = new String[names.length];
         for (String name : names) {
             JcrNameParser.checkName(name, false);
-            n[k++] = mapper.getJcrName(mapper.getOakName(name));
+            n[k++] = name;
         }
         this.superTypeNames = n;
     }
@@ -247,7 +244,7 @@ final class NodeTypeTemplateImpl
         JcrNameParser.checkName(name, false);
         String[] names = new String[superTypeNames.length + 1];
         System.arraycopy(superTypeNames, 0, names, 0, superTypeNames.length);
-        names[superTypeNames.length] = mapper.getJcrName(mapper.getOakName(name));
+        names[superTypeNames.length] = name;
         superTypeNames = names;
     }
 

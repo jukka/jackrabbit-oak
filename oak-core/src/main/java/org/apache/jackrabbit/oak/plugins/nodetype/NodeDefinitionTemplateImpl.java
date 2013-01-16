@@ -29,7 +29,6 @@ import javax.jcr.version.OnParentVersionAction;
 
 import org.apache.jackrabbit.commons.cnd.DefinitionBuilderFactory.AbstractNodeDefinitionBuilder;
 import org.apache.jackrabbit.oak.namepath.JcrNameParser;
-import org.apache.jackrabbit.oak.namepath.NameMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,15 +41,13 @@ class NodeDefinitionTemplateImpl
 
     private String defaultPrimaryTypeName;
 
-    private final NameMapper mapper;
     private String[] requiredPrimaryTypeNames;
 
     protected NodeType getNodeType(String name) throws RepositoryException {
         throw new UnsupportedRepositoryOperationException();
     }
 
-    public NodeDefinitionTemplateImpl(NameMapper mapper) {
-        this.mapper = mapper;
+    public NodeDefinitionTemplateImpl() {
         onParent = OnParentVersionAction.COPY;
     }
 
@@ -72,7 +69,7 @@ class NodeDefinitionTemplateImpl
     @Override
     public void setName(String name) throws ConstraintViolationException {
         JcrNameParser.checkName(name, true);
-        this.name = mapper.getJcrName(mapper.getOakName(name));
+        this.name = name;
     }
 
     @Override
@@ -155,7 +152,7 @@ class NodeDefinitionTemplateImpl
         }
         else {
             JcrNameParser.checkName(name, false);
-            this.defaultPrimaryTypeName = mapper.getJcrName(mapper.getOakName(name));
+            this.defaultPrimaryTypeName = name;
         }
     }
 
@@ -198,7 +195,7 @@ class NodeDefinitionTemplateImpl
         String[] n = new String[names.length];
         for (String name : names) {
             JcrNameParser.checkName(name, false);
-            n[k++] = mapper.getJcrName(mapper.getOakName(name));
+            n[k++] = name;
         }
         this.requiredPrimaryTypeNames = n;
     }
@@ -207,11 +204,11 @@ class NodeDefinitionTemplateImpl
     public void addRequiredPrimaryType(String name) throws ConstraintViolationException {
         JcrNameParser.checkName(name, false);
         if (requiredPrimaryTypeNames == null) {
-            requiredPrimaryTypeNames = new String[] { mapper.getJcrName(mapper.getOakName(name)) };
+            requiredPrimaryTypeNames = new String[] { name };
         } else {
             String[] names = new String[requiredPrimaryTypeNames.length + 1];
             System.arraycopy(requiredPrimaryTypeNames, 0, names, 0, requiredPrimaryTypeNames.length);
-            names[requiredPrimaryTypeNames.length] = mapper.getJcrName(mapper.getOakName(name));
+            names[requiredPrimaryTypeNames.length] = name;
             requiredPrimaryTypeNames = names;
         }
 
