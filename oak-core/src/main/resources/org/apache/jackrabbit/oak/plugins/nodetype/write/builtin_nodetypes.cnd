@@ -425,6 +425,16 @@
   + jcr:propertyDefinition (nt:propertyDefinition) = nt:propertyDefinition protected sns
   + jcr:childNodeDefinition (nt:childNodeDefinition) = nt:childNodeDefinition protected sns
 
+[oak:nodeType]
+  - jcr:supertypes (NAME) protected multiple
+  - jcr:isAbstract (BOOLEAN) protected mandatory
+  - jcr:isQueryable (BOOLEAN) protected mandatory
+  - jcr:isMixin (BOOLEAN) protected mandatory
+  - jcr:hasOrderableChildNodes (BOOLEAN) protected mandatory
+  - jcr:primaryItemName (NAME) protected
+  + jcr:propertyDefinition (nt:propertyDefinition) = nt:propertyDefinition protected sns
+  + jcr:childNodeDefinition (nt:childNodeDefinition) = nt:childNodeDefinition protected sns
+
 /**
  * This node type used to store a property definition within a node type definition,
  * which itself is stored as an nt:nodeType node.

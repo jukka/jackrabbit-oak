@@ -23,6 +23,8 @@ import org.apache.jackrabbit.JcrConstants;
  */
 public interface NodeTypeConstants extends JcrConstants {
 
+    String OAK_NODE_TYPES = "oak:nodeTypes";
+
     String JCR_NODE_TYPES = "jcr:nodeTypes";
     String NODE_TYPES_PATH = '/' + JcrConstants.JCR_SYSTEM + '/' + JCR_NODE_TYPES;
 

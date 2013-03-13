@@ -16,13 +16,22 @@
  */
 package org.apache.jackrabbit.oak.plugins.nodetype;
 
+import static org.apache.jackrabbit.JcrConstants.JCR_SYSTEM;
+
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Service;
 import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.oak.core.ReadOnlyTree;
+import org.apache.jackrabbit.oak.spi.commit.Editor;
+import org.apache.jackrabbit.oak.spi.commit.EditorProvider;
+import org.apache.jackrabbit.oak.spi.commit.SubtreeEditor;
 import org.apache.jackrabbit.oak.spi.commit.SubtreeValidator;
 import org.apache.jackrabbit.oak.spi.commit.Validator;
 import org.apache.jackrabbit.oak.spi.commit.ValidatorProvider;
+import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 
 /**
@@ -31,15 +40,17 @@ import org.apache.jackrabbit.oak.spi.state.NodeState;
  * is responsible for making sure that any modifications made to node type
  * definitions are valid.
  */
-public class RegistrationValidatorProvider extends ValidatorProvider {
+@Component
+@Service(EditorProvider.class)
+public class RegistrationEditorProvider implements EditorProvider {
 
-    @Nonnull
-    @Override
-    public Validator getRootValidator(NodeState before, NodeState after) {
-        Validator validator = new RegistrationValidator(
-                ReadOnlyNodeTypeManager.getInstance(before),
-                ReadOnlyNodeTypeManager.getInstance(after),
-                new ReadOnlyTree(before), new ReadOnlyTree(after));
-        return new SubtreeValidator(validator, JcrConstants.JCR_SYSTEM, NodeTypeConstants.JCR_NODE_TYPES);
+    @Override @CheckForNull
+    public Editor getRootEditor(NodeState before, NodeState after, NodeBuilder builder) {
+        if (builder.hasChildNode(JCR_SYSTEM)) {
+            NodeBuilder system = builder.child(JCR_SYSTEM);
+            return new SubtreeEditor(new RegistrationEditor(system), JCR_SYSTEM);
+        } else {
+            return null;
+        }
     }
 }
