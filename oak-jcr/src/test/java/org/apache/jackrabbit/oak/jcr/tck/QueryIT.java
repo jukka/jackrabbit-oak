@@ -16,6 +16,8 @@
  */
 package org.apache.jackrabbit.oak.jcr.tck;
 
+import org.apache.jackrabbit.test.api.query.qom.DescendantNodeJoinConditionTest;
+
 import junit.framework.Test;
 
 public class QueryIT extends TCKBase {
@@ -30,7 +32,8 @@ public class QueryIT extends TCKBase {
 
     @Override
     protected void addTests() {
-        addTest(org.apache.jackrabbit.test.api.query.TestAll.suite());
-        addTest(org.apache.jackrabbit.test.api.query.qom.TestAll.suite());
+        addTestSuite(DescendantNodeJoinConditionTest.class);
+        // addTest(org.apache.jackrabbit.test.api.query.TestAll.suite());
+        // addTest(org.apache.jackrabbit.test.api.query.qom.TestAll.suite());
     }
 }
