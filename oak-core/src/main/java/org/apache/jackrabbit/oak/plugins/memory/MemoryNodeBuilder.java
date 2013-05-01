@@ -24,6 +24,7 @@ import static org.apache.jackrabbit.oak.api.Type.NAME;
 import static org.apache.jackrabbit.oak.api.Type.NAMES;
 import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
 
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.api.PropertyState;
@@ -40,14 +41,11 @@ import org.apache.jackrabbit.oak.spi.state.NodeState;
  * instances for tracking <em>uncommitted changes</em>. A child builders
  * keeps a reference to its parent builder and knows its own name. Before
  * each access the builder checks the mutable state of its parent for
- * relevant changes and updates its own mutable state.
+ * relevant changes and updates its own state.
  * <p>
  * A {@code MutableNodeState} instance does not keep a reference to its
  * parent state. It only keeps references to children that have been
- * modified. Instances representing an unmodified child are created on
- * the fly without keeping a reference. This effectively ensures that
- * such an instance can be GC'ed once no node builder references it
- * anymore.
+ * modified.
  */
 public class MemoryNodeBuilder implements NodeBuilder {
 
@@ -81,22 +79,41 @@ public class MemoryNodeBuilder implements NodeBuilder {
      * represents a new node that didn't yet exist in the base content tree.
      * @see #base()
      */
+    @Nonnull
     private NodeState base;
 
     /**
      * Internal revision counter for the head state of this builder. The counter
      * is incremented in the root builder whenever anything changes in the tree
      * below. Each builder instance has its own copy of this revision counter for
-     * quickly checking whether its head state needs updating.
+     * quickly checking whether its head state needs updating. Once the head
+     * state becomes a {@link MutableNodeState}, the head revision is no longer
+     * needed or used.
      */
     private long headRevision;
 
     /**
-     * The shared mutable state this builder.
+     * The head state for reading content.
      * @see #write()
      * @see #read()
      */
-    private MutableNodeState head;
+    @Nonnull
+    private NodeState readHead;
+
+    /**
+     * The mutable head state for writing content.
+     * <p>
+     * Set to {@code null} until this builder is first modified, at which
+     * point both this and the {@link #readHead} variable are set to point
+     * to the {@link MutableNodeState} instance shared by all builder
+     * instances  that refer to the same node within the scope of the same
+     * root builder. The root builder always has a non-{@code null} write head.
+     *
+     * @see #write()
+     * @see #read()
+     */
+    @CheckForNull
+    private MutableNodeState writeHead;
 
     /**
      * Creates a new in-memory child builder.
@@ -107,6 +124,19 @@ public class MemoryNodeBuilder implements NodeBuilder {
         this.parent = parent;
         this.name = name;
         this.root = parent.root;
+
+        this.baseRevision = parent.baseRevision;
+        this.base = parent.base.getChildNode(name);
+
+        this.headRevision = parent.headRevision;
+        this.readHead = parent.readHead.getChildNode(name);
+        if (readHead instanceof MutableNodeState) {
+            this.writeHead = (MutableNodeState) readHead;
+        } else {
+            this.writeHead = null;
+        }
+
+        assert invariants();
     }
 
     /**
@@ -119,13 +149,29 @@ public class MemoryNodeBuilder implements NodeBuilder {
         this.name = null;
         this.root = this;
 
-        // ensure base is updated on next call to base()
-        this.baseRevision = 1;
+        this.baseRevision = 0;
         this.base = checkNotNull(base);
 
-        // ensure head is updated on next call to read() or write()
-        this.headRevision = 1;
-        this.head = new MutableNodeState(this.base);
+        this.headRevision = 0;
+        this.writeHead = new MutableNodeState(base);
+        this.readHead = writeHead;
+
+        assert invariants();
+    }
+
+    private boolean invariants() {
+        if (this == root) {
+            return parent == null && name == null
+                    && base != null
+                    && writeHead != null && writeHead == readHead;
+        } else {
+            return parent != null && name != null && root != null
+                    && baseRevision <= root.headRevision
+                    && base != null
+                    && headRevision <= root.headRevision
+                    && readHead != null
+                    && (writeHead == null || writeHead == readHead);
+        }
     }
 
     private boolean isRoot() {
@@ -139,9 +185,12 @@ public class MemoryNodeBuilder implements NodeBuilder {
      */
     @Nonnull
     private NodeState base() {
-        if (root.baseRevision != baseRevision) {
+        if (baseRevision != root.baseRevision) {
+            assert parent != null && name != null
+                    : "root should have baseRevision == root.baseRevision";
             base = parent.base().getChildNode(name);
             baseRevision = root.baseRevision;
+            assert invariants();
         }
         return base;
     }
@@ -152,13 +201,20 @@ public class MemoryNodeBuilder implements NodeBuilder {
      * @return  head state of this builder
      */
     @Nonnull
-    private MutableNodeState read() {
-        if (headRevision != root.headRevision) {
-            assert !isRoot() : "root should have headRevision == root.headRevision";
-            head = parent.read().getChildNode(name, false);
-            headRevision = root.headRevision;
+    private NodeState read() {
+        if (writeHead == null // otherwise readHead == writeHead
+                && headRevision != root.headRevision) {
+            assert parent != null && name != null
+                    : "root should have headRevision == root.headRevision";
+            readHead = parent.read().getChildNode(name);
+            if (readHead instanceof MutableNodeState) {
+                writeHead = (MutableNodeState) readHead;
+            } else {
+                headRevision = root.headRevision;
+            }
+            assert invariants();
         }
-        return head;
+        return readHead;
     }
 
     /**
@@ -170,24 +226,29 @@ public class MemoryNodeBuilder implements NodeBuilder {
      */
     @Nonnull
     private MutableNodeState write() {
-        // TODO avoid traversing the parent hierarchy twice: once for exist and once for write
-        if (!exists()) {
-            throw new IllegalStateException("This builder does not exist: " + name);
+        MutableNodeState mutable = getWriteHead();
+        if (mutable.exists()) {
+            root.headRevision++;
+            return mutable;
+        } else {
+            throw new IllegalStateException(
+                    "This builder does not exist: " + name);
         }
-        return write(root.headRevision + 1);
     }
 
     /**
      * Recursive helper method to {@link #write()}. Don't call directly.
      */
     @Nonnull
-    private MutableNodeState write(long newRevision) {
-        if (headRevision != newRevision && !isRoot()) {
-            head = parent.write(newRevision).getChildNode(name, true);
-            headRevision = newRevision;
+    private MutableNodeState getWriteHead() {
+        if (writeHead == null) {
+            assert parent != null && name != null
+                    : "root should have writeHead != null";
+            writeHead = parent.getWriteHead().getMutableChildNode(name);
+            readHead = writeHead;
+            assert invariants();
         }
-        root.headRevision = newRevision;
-        return head;
+        return writeHead;
     }
 
     /**
@@ -215,7 +276,11 @@ public class MemoryNodeBuilder implements NodeBuilder {
 
     @Override
     public NodeState getNodeState() {
-        return read().snapshot();
+        if (writeHead != null) {
+            return writeHead.snapshot();
+        } else {
+            return read();
+        }
     }
 
     @Override
@@ -235,7 +300,9 @@ public class MemoryNodeBuilder implements NodeBuilder {
 
     @Override
     public boolean isModified() {
-        return read().isModified(base());
+        // FIXME: What if the write base is different from the builder base?
+        read();
+        return writeHead != null && writeHead.isModified(base());
     }
 
     @Override
@@ -244,7 +311,8 @@ public class MemoryNodeBuilder implements NodeBuilder {
         base = checkNotNull(newBase);
         root.baseRevision++;
         root.headRevision++;
-        head = new MutableNodeState(base);
+        assert writeHead != null : "root should have writeHead != null";
+        writeHead.reset(base);
     }
 
     @Override
