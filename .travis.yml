@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-script: mvn verify -Ppedantic,integrationTesting
+script: mvn clean
 language: java
 jdk:
   - openjdk6
 notifications:
   webhooks:
-    urls: http://zitting.name/2013/travis/jackrabbbit-oak
+    urls: http://zitting.name/cgi-bin/travis.pl
