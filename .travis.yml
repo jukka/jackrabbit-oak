@@ -14,7 +14,6 @@
 # limitations under the License.
 
 install: true
-
 script: mvn clean
 language: java
 jdk:
