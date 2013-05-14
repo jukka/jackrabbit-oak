@@ -15,6 +15,7 @@
 
 install: true
 script: true
+
 language: java
 jdk:
   - openjdk6
