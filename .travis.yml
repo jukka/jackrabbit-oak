@@ -14,11 +14,10 @@
 # limitations under the License.
 
 install: true
-
 script: true
 language: java
 jdk:
   - openjdk6
 notifications:
   webhooks:
-    urls: http://zitting.name/cgi-bin/travis.pl
+    urls: http://zitting.name/travis/notify
