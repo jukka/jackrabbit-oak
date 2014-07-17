@@ -213,7 +213,7 @@ public class OrderedPropertyIndex implements QueryIndex, AdvancedQueryIndex {
 
     @Override
     public String getPlan(Filter filter, NodeState root) {
-        return getPlanDescription(getIndexPlanBuilder(filter).build(), root);
+        return getPlanDescription(getIndexPlanBuilder(filter).build());
     }
 
     @Override
